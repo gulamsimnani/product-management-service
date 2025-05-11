@@ -1,0 +1,18 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Upload folder for images (if you're storing locally, adjust if using cloud storage)
+uploads/
+
+# Logs
+*.log
+
+# IDE files
+.vscode/
+.idea/
+
+# MacOS system files
+.DS_Store
