@@ -1,28 +1,40 @@
-// routes/productRoutes.js
-const express = require('express');
-const multer = require('multer');
-const path = require('path');
-const productController = require('../controllers/productController');
-
+const express = require("express");
 const router = express.Router();
+const multer = require("multer");
+const path = require("path");
+const productController = require("../controllers/productController");
 
-// Multer storage configuration for file uploads
+// Configure Multer storage
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, './uploads'); // Save images to the 'uploads' folder
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
   },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Unique filename
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + "-" + file.originalname);
   },
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
-// Routes for CRUD operations
-router.post('/products', upload.single('image'), productController.createProduct);
-router.get('/products', productController.getProducts);
-router.put('/products/:productId', upload.single('image'), productController.updateProductByProductId);
-router.delete('/products/:productId', productController.deleteProductByProductId);
+// Create product with multiple image uploads
+router.post(
+  "/products",
+  upload.array("images", 5),
+  productController.createProduct
+);
 
+// Get all products
+router.get("/products", productController.getProducts);
+
+// Update product with multiple image uploads
+router.put(
+  "/products/:productId",
+  upload.array("images", 5),
+  productController.updateProductByProductId
+);
+
+// Delete product
+router.delete("/products/:productId", productController.deleteProductByProductId);
 
 module.exports = router;

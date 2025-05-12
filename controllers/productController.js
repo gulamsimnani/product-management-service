@@ -1,8 +1,12 @@
+const fs = require('fs');
 const Product = require("../models/productModel");
 const path = require("path");
 const generateProductId = require("../helpers/productIdGenerator");
 
-// Create a new product
+// controllers/productController.js
+
+// const Product = require("../models/productModel");
+
 exports.createProduct = async (req, res) => {
   try {
     // Generate a unique product ID
@@ -20,8 +24,12 @@ exports.createProduct = async (req, res) => {
       size,
       bestseller,
     } = req.body;
+
+    // Collect all image paths from multer's req.files
+    const imagePaths = req.files ? req.files.map(file => file.path) : [];
+
     const product = new Product({
-      productId, // Add the generated product ID
+      productId,
       title,
       description,
       price,
@@ -32,17 +40,23 @@ exports.createProduct = async (req, res) => {
       color,
       size,
       bestseller,
-      image: req.file ? req.file.path : null, // Store the file path of the image if available
+      images: imagePaths, // assuming your model has `images: [String]`
     });
 
     await product.save();
-    res.status(201).json(product);
+
+    res.status(201).json({ success: true, product });
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Error creating product", error: err.message });
+    console.error("Error creating product:", err); // This will show actual error
+    res.status(500).json({
+      success: false,
+      message: "Failed to create product",
+      error: err.message,
+    });
   }
 };
+
+
 
 // Get all products (with pagination)
 exports.getProducts = async (req, res) => {
@@ -63,14 +77,24 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-// Update product by productId
+// Update product by productId and merge new images without duplicates
 exports.updateProductByProductId = async (req, res) => {
   try {
     const { productId } = req.params;
     const updates = { ...req.body };
 
-    if (req.file) {
-      updates.image = req.file.path;
+    const existingProduct = await Product.findOne({ productId });
+
+    if (!existingProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (req.files && req.files.length > 0) {
+      const newImagePaths = req.files.map(file => file.path);
+      const mergedImages = Array.from(
+        new Set([...(existingProduct.images || []), ...newImagePaths])
+      );
+      updates.images = mergedImages;
     }
 
     const updatedProduct = await Product.findOneAndUpdate(
@@ -78,10 +102,6 @@ exports.updateProductByProductId = async (req, res) => {
       updates,
       { new: true }
     );
-
-    if (!updatedProduct) {
-      return res.status(404).json({ message: "Product not found" });
-    }
 
     res.json(updatedProduct);
   } catch (err) {
@@ -94,7 +114,6 @@ exports.updateProductByProductId = async (req, res) => {
 exports.deleteProductByProductId = async (req, res) => {
   try {
     const { productId } = req.params;
-
     const deletedProduct = await Product.findOneAndDelete({ productId });
 
     if (!deletedProduct) {

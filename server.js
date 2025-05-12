@@ -1,6 +1,7 @@
 // server.js
 const express = require('express');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const path = require('path');
 const dotenv = require('dotenv'); // Ensure dotenv is required at the top
 
@@ -9,7 +10,13 @@ dotenv.config();  // This loads the environment variables from your .env file
 const productRoutes = require('./routes/productRoutes');
 
 const app = express();
+app.use(cors()); // Enable CORS for all routes
 
+// OR if you want to restrict to localhost:4200 only:
+app.use(cors({
+  origin: 'http://localhost:4200',
+  credentials: true
+}));
 // Middleware
 app.use(express.json()); // Parse JSON request bodies
 app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
