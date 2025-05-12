@@ -3,13 +3,9 @@ const Product = require("../models/productModel");
 const path = require("path");
 const generateProductId = require("../helpers/productIdGenerator");
 
-// controllers/productController.js
-
-// const Product = require("../models/productModel");
-
+// CREATE product
 exports.createProduct = async (req, res) => {
   try {
-    // Generate a unique product ID
     const productId = await generateProductId();
 
     const {
@@ -23,11 +19,18 @@ exports.createProduct = async (req, res) => {
       color,
       size,
       bestseller,
+      featured,
+      newArrival,
+      onSale,
+      soldOut,
+      inStock
     } = req.body;
 
-    // Collect all image paths from multer's req.files
     const imagePaths = req.files ? req.files.map(file => file.path) : [];
-
+    const parseBoolean = (val) => {
+      if (Array.isArray(val)) val = val[0];
+      return val === 'true' || val === true;
+    };
     const product = new Product({
       productId,
       title,
@@ -39,15 +42,20 @@ exports.createProduct = async (req, res) => {
       category,
       color,
       size,
-      bestseller,
-      images: imagePaths, // assuming your model has `images: [String]`
+      bestseller: parseBoolean(bestseller),
+      featured: parseBoolean(featured) || false,
+      newArrival: parseBoolean(newArrival) || false,
+      onSale: parseBoolean(onSale) || false,
+      soldOut: parseBoolean(soldOut) || false,
+      inStock: parseBoolean(inStock) || false,
+      images: imagePaths,
     });
 
     await product.save();
 
     res.status(201).json({ success: true, product });
   } catch (err) {
-    console.error("Error creating product:", err); // This will show actual error
+    console.error("Error creating product:", err);
     res.status(500).json({
       success: false,
       message: "Failed to create product",
@@ -56,9 +64,7 @@ exports.createProduct = async (req, res) => {
   }
 };
 
-
-
-// Get all products (with pagination)
+// GET all products
 exports.getProducts = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
@@ -67,6 +73,7 @@ exports.getProducts = async (req, res) => {
   try {
     const products = await Product.find().skip(skip).limit(limit);
     const totalProducts = await Product.countDocuments();
+
     res.json({
       products,
       totalProducts,
@@ -77,7 +84,7 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-// Update product by productId and merge new images without duplicates
+// UPDATE product by productId
 exports.updateProductByProductId = async (req, res) => {
   try {
     const { productId } = req.params;
@@ -97,6 +104,14 @@ exports.updateProductByProductId = async (req, res) => {
       updates.images = mergedImages;
     }
 
+    // Convert boolean-like string values if necessary
+    const booleanFields = ['bestseller', 'featured', 'newArrival', 'onSale', 'soldOut', 'inStock'];
+    booleanFields.forEach(field => {
+      if (field in updates) {
+        updates[field] = updates[field] === 'true' || updates[field] === true;
+      }
+    });
+
     const updatedProduct = await Product.findOneAndUpdate(
       { productId },
       updates,
@@ -110,7 +125,7 @@ exports.updateProductByProductId = async (req, res) => {
   }
 };
 
-// Delete product by productId
+// DELETE product by productId
 exports.deleteProductByProductId = async (req, res) => {
   try {
     const { productId } = req.params;
